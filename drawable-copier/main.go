@@ -63,20 +63,20 @@ func copyFile(src, trg string, isOverwrite bool) bool {
 
     srcFile, err := os.Open(src)
     if err != nil {
-        log.Println(trg + ": " + err.Error())
+        log.Println(err)
         return false
     }
     defer srcFile.Close()
 
     trgFile, err := os.Create(trg)
     if err != nil {
-        log.Println(trg + ": " + err.Error())
+        log.Println(err)
         return false
     }
     defer trgFile.Close()
     if _, err := io.Copy(trgFile, srcFile); err != nil {
         os.Remove(trg)
-        log.Println(trg + ": " + err.Error())
+        log.Println(err)
         return false
     }
     log.Println("Copied " + trg)
