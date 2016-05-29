@@ -30,6 +30,7 @@ import (
 
 var (
     isOverwrite = flag.Bool("w", false, "If True, overwrite the file if the file already exists in the target directory.")
+    isRemoveSource = flag.Bool("r", false, "If True, remove the source directory when all of process was successful.")
 )
 
 const (
@@ -52,36 +53,41 @@ func getFiles(path string) []os.FileInfo {
     return []os.FileInfo{}
 }
 
-func copyFile(src, trg string, isOverwrite bool) {
+func copyFile(src, trg string, isOverwrite bool) bool {
     if !isOverwrite {
         if _, err := os.Stat(trg); err == nil {
             log.Println(trg + " already exists. Not overwrite.")
-            return
+            return true
         }
     }
 
     srcFile, err := os.Open(src)
     if err != nil {
         log.Println(trg + ": " + err.Error())
+        return false
     }
     defer srcFile.Close()
 
     trgFile, err := os.Create(trg)
     if err != nil {
         log.Println(trg + ": " + err.Error())
+        return false
     }
     defer trgFile.Close()
     if _, err := io.Copy(trgFile, srcFile); err != nil {
+        os.Remove(trg)
         log.Println(trg + ": " + err.Error())
+        return false
     }
     log.Println("Copied " + trg)
+    return true
 }
 
 func isDrawableDir(dirname string) bool {
     return strings.Contains(dirname, DrawableDirPrefix)
 }
 
-func copyFiles(src, trg string, isOverwrite bool) {
+func copyFiles(src, trg string, isOverwrite bool) bool {
     srcs := getFiles(src)
     trgs := getFiles(trg)
 
@@ -94,6 +100,8 @@ func copyFiles(src, trg string, isOverwrite bool) {
         trgs = getFiles(trg)
     }
 
+    allSucceed := true
+
     for _, sf := range srcs {
         if !isDrawableDir(sf.Name()) {
             continue
@@ -104,11 +112,12 @@ func copyFiles(src, trg string, isOverwrite bool) {
                 for _, si := range sImages {
                     sfPath := filepath.Join(src, sf.Name(), si.Name())
                     tfPath := filepath.Join(trg, tf.Name(), si.Name())
-                    copyFile(sfPath, tfPath, isOverwrite)
+                    allSucceed = copyFile(sfPath, tfPath, isOverwrite)
                 }
             }
         }
     }
+    return allSucceed
 }
 
 func main() {
@@ -119,5 +128,10 @@ func main() {
 
     src := flag.Arg(0)
     trg := flag.Arg(1)
-    copyFiles(src, trg, *isOverwrite)
+    allSucceed := copyFiles(src, trg, *isOverwrite)
+    if *isRemoveSource && allSucceed {
+        if err := os.RemoveAll(src); err != nil {
+            log.Println(err)
+        }
+    }
 }
