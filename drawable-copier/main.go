@@ -89,16 +89,17 @@ func isDrawableDir(dirname string) bool {
 
 func copyFiles(src, trg string, isOverwrite bool) bool {
     srcs := getFiles(src)
-    trgs := getFiles(trg)
 
-    if len(trgs) == 0 {
-        for _, sf := range srcs {
-            if isDrawableDir(sf.Name()) {
-                os.Mkdir(filepath.Join(trg, sf.Name()), 0700)
+    for _, sf := range srcs {
+        if isDrawableDir(sf.Name()) {
+            path := filepath.Join(trg, sf.Name())
+            if _, err := os.Stat(path); err == nil {
+                continue
             }
+            os.Mkdir(path, 0700)
         }
-        trgs = getFiles(trg)
     }
+    trgs := getFiles(trg)
 
     allSucceed := true
 
